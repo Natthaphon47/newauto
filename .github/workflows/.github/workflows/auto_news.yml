@@ -1,0 +1,40 @@
+name: AutoNews Summarizer
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-summarizer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab')"
+
+      - name: Run script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          TO_EMAIL: ${{ secrets.TO_EMAIL }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          USE_GEMINI: ${{ secrets.USE_GEMINI }}
+        run: python main.py --once
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add sent_articles.json
+          git commit -m "Update sent articles [skip ci]" || echo "No changes to commit"
+          git push
